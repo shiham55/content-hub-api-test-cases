@@ -1,0 +1,28 @@
+{
+  "name": "content-hub-api-test-cases",
+  "version": "1.0.0",
+  "description": "Comprehensive API test cases for Sitecore Content Hub REST API",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:content-hub": "npx playwright test tests/sitecore-content-hub-test-cases.ts",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug",
+    "report": "npx playwright show-report",
+    "install-browsers": "npx playwright install"
+  },
+  "keywords": [
+    "sitecore",
+    "content-hub",
+    "api",
+    "testing",
+    "playwright"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^24.0.13",
+    "dotenv": "^16.6.1"
+  }
+}
