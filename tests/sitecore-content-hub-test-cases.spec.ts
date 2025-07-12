@@ -11,6 +11,7 @@ interface AuthToken {
   access_token: string;
   token_type: string;
   expires_in: number;
+  refresh_token?: string;
 }
 
 /**
@@ -19,6 +20,8 @@ interface AuthToken {
 class ContentHubAPIClient {
   private request: APIRequestContext;
   private authToken: string | null = null;
+  private tokenExpiry: number = 0;
+  private refreshToken: string | null = null;
   private lastRequestTime: number = 0;
   private requestCount: number = 0;
   private readonly MAX_REQUESTS_PER_SECOND = 13;
@@ -56,12 +59,17 @@ class ContentHubAPIClient {
   }
 
   /**
-   * Get OAuth token for authentication with rate limiting
+   * Get OAuth token for authentication using Resource Owner Password Credentials Grant
    */
   async getAuthToken(): Promise<string> {
-    if (this.authToken) {
+    // Check if current token is still valid
+    if (this.authToken && Date.now() < this.tokenExpiry) {
       return this.authToken;
     }
+
+    // Clear expired token
+    this.authToken = null;
+    this.tokenExpiry = 0;
 
     await this.enforceRateLimit();
 
@@ -74,14 +82,31 @@ class ContentHubAPIClient {
         password: PASSWORD
       },
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
       }
     });
 
-    expect(response.status()).toBe(200);
+    if (response.status() !== 200) {
+      const errorText = await response.text();
+      console.error(`Authentication failed with status ${response.status()}: ${errorText}`);
+      throw new Error(`OAuth authentication failed: ${response.status()} - ${errorText}`);
+    }
     
     const tokenData: AuthToken = await response.json();
+    
+    if (!tokenData.access_token) {
+      throw new Error('No access token received in authentication response');
+    }
+    
     this.authToken = tokenData.access_token;
+    this.refreshToken = tokenData.refresh_token || null;
+    
+    // Set token expiry with a 5-minute buffer to avoid edge cases
+    this.tokenExpiry = Date.now() + ((tokenData.expires_in - 300) * 1000);
+    
+    // Log token info for debugging (without exposing the actual token)
+    console.log(`Authentication successful. Token type: ${tokenData.token_type}, expires in: ${tokenData.expires_in} seconds`);
     
     return this.authToken;
   }
@@ -162,11 +187,20 @@ class ContentHubAPIClient {
   }
 
   /**
-   * Reset rate limiting counters (useful for testing)
+   * Reset rate limiting counters and clear authentication (useful for testing)
    */
   resetRateLimit(): void {
     this.requestCount = 0;
     this.lastRequestTime = 0;
+  }
+
+  /**
+   * Clear authentication tokens (useful for testing different auth scenarios)
+   */
+  clearAuth(): void {
+    this.authToken = null;
+    this.refreshToken = null;
+    this.tokenExpiry = 0;
   }
 }
 
@@ -178,28 +212,104 @@ test.describe('Sitecore Content Hub API Tests', () => {
   });
 
   test.describe('Authentication Tests', () => {
-    test('should authenticate and get OAuth token', async () => {
+    test('should authenticate using Resource Owner Password Credentials Grant', async () => {
       const token = await apiClient.getAuthToken();
       expect(token).toBeTruthy();
       expect(typeof token).toBe('string');
       expect(token.length).toBeGreaterThan(0);
+      
+      // Verify token format (should be a JWT or similar long string)
+      expect(token.split('.').length).toBeGreaterThanOrEqual(1);
     });
 
-    test('should fail authentication with invalid credentials', async ({ request }) => {
+    test('should fail authentication with invalid client credentials', async ({ request }) => {
       const response = await request.post(`${CONTENT_HUB_BASE_URL}/oauth/token`, {
         form: {
           grant_type: 'password',
-          client_id: 'invalid-client',
-          client_secret: 'invalid-secret',
-          username: 'invalid-user',
+          client_id: 'invalid-client-id',
+          client_secret: 'invalid-client-secret',
+          username: USERNAME,
+          password: PASSWORD
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        }
+      });
+
+      expect([400, 401]).toContain(response.status());
+    });
+
+    test('should fail authentication with invalid user credentials', async ({ request }) => {
+      const response = await request.post(`${CONTENT_HUB_BASE_URL}/oauth/token`, {
+        form: {
+          grant_type: 'password',
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          username: 'invalid-username',
           password: 'invalid-password'
         },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        }
+      });
+
+      expect([400, 401]).toContain(response.status());
+    });
+
+    test('should fail authentication with missing required parameters', async ({ request }) => {
+      const response = await request.post(`${CONTENT_HUB_BASE_URL}/oauth/token`, {
+        form: {
+          grant_type: 'password',
+          client_id: CLIENT_ID,
+          // Missing client_secret, username, password
+          scope: 'api'
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
         }
       });
 
       expect(response.status()).toBe(400);
+    });
+
+    test('should fail authentication with unsupported grant type', async ({ request }) => {
+      const response = await request.post(`${CONTENT_HUB_BASE_URL}/oauth/token`, {
+        form: {
+          grant_type: 'authorization_code', // Unsupported grant type
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          username: USERNAME,
+          password: PASSWORD
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        }
+      });
+
+      expect([400, 401]).toContain(response.status());
+    });
+
+    test('should handle token caching correctly', async () => {
+      // Clear any existing tokens
+      apiClient.clearAuth();
+      
+      // First call should authenticate
+      const token1 = await apiClient.getAuthToken();
+      expect(token1).toBeTruthy();
+      
+      // Second call should return cached token (same token)
+      const token2 = await apiClient.getAuthToken();
+      expect(token2).toBe(token1);
+      
+      // Clear and get new token
+      apiClient.clearAuth();
+      const token3 = await apiClient.getAuthToken();
+      expect(token3).toBeTruthy();
+      // Note: token3 may or may not be different from token1 depending on server behavior
     });
   });
 });

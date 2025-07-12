@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "npx playwright test",
-    "test:content-hub": "npx playwright test tests/sitecore-content-hub-test-cases.ts",
+    "test:content-hub": "npx playwright test tests/sitecore-content-hub-test-cases.spec.ts",
     "test:headed": "npx playwright test --headed",
     "test:debug": "npx playwright test --debug",
     "report": "npx playwright show-report",
-    "install-browsers": "npx playwright install"
+    "install-browsers": "npx playwright install",
+    "test:list": "npx playwright test --list"
   },
   "keywords": [
     "sitecore",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.1",
     "@types/node": "^24.0.13",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "typescript": "^5.8.3"
   }
 }

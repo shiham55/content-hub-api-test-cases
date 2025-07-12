@@ -45,12 +45,23 @@ CONTENT_HUB_PASSWORD=your-password
 1. Log into your Content Hub instance as an administrator
 2. Navigate to **Manage** > **Settings** > **Integrations** > **OAuth clients**
 3. Create a new OAuth client or use an existing one
-4. Note down the **Client ID** and **Client Secret**
-5. Ensure the client has the necessary scopes (typically `api`)
+4. Configure the OAuth client for **Resource Owner Password Credentials Grant**:
+   - Set the grant type to allow `password` grant
+   - Ensure the client has the necessary scopes (typically `api`)
+   - Note down the **Client ID** and **Client Secret**
+5. The client must be configured to support the Resource Owner Password flow
 
 #### User Credentials
 - Use a valid Content Hub user account with appropriate permissions
 - The user should have access to the APIs you want to test
+- Ensure the user account is not locked or disabled
+
+### Authentication Flow
+The test suite uses the **Resource Owner Password Credentials Grant** OAuth 2.0 flow:
+1. Exchanges username/password + client credentials for an access token
+2. Uses the access token for subsequent API requests via `X-Auth-Token` header
+3. Automatically handles token expiry and re-authentication
+4. Implements proper error handling for authentication failures
 
 ## Rate Limiting and Throttling
 
@@ -132,6 +143,11 @@ npm test
 ### Run Only Content Hub API Tests
 ```bash
 npm run test:content-hub
+```
+
+### List All Available Tests
+```bash
+npm run test:list
 ```
 
 ### Run Tests in Headed Mode (with browser UI)
@@ -217,21 +233,27 @@ Tests run in parallel by default and include retry logic for CI environments.
 
 ### Common Issues
 
-1. **Authentication Failures**
+1. **"Error: No tests found"**
+   - Ensure test files follow the naming convention: `*.spec.ts` or `*.test.ts`
+   - The main test file should be named: `sitecore-content-hub-test-cases.spec.ts`
+   - Verify the file is in the `tests/` directory
+   - Run `npm run test:list` to see if tests are detected
+
+2. **Authentication Failures**
    - Verify your OAuth client credentials are correct
    - Ensure the OAuth client has the required scopes
    - Check that the user credentials are valid
 
-2. **Network Timeouts**
+3. **Network Timeouts**
    - Verify your Content Hub instance URL is accessible
    - Check firewall/proxy settings
    - Increase timeout values if needed
 
-3. **Permission Errors**
+4. **Permission Errors**
    - Ensure the user has appropriate permissions for the APIs being tested
    - Check that the OAuth client has the necessary scopes
 
-4. **Test Data Conflicts**
+5. **Test Data Conflicts**
    - Tests create temporary entities with timestamps to avoid conflicts
    - If tests fail due to existing data, check for cleanup issues
 
