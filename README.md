@@ -89,9 +89,15 @@ The test suite is organized into the following categories:
 - Token validation
 
 ### Entity Management Tests
-- Create, read, update, delete entities
-- Entity property management
-- Entity relationships
+- **Get Entity by ID**: Retrieve entities using numeric IDs with various parameters (culture, permissions, groups, members, renditions)
+- **Get Entity by Identifier**: Retrieve entities using string identifiers
+- **Update Entity Title with Timestamp**: Update entity titles with current timestamps in various formats (ISO 8601, custom formats)
+- **Entity CRUD Operations**: Create, read, update, and delete operations with timestamp tracking
+- **Multi-Property Updates**: Simultaneous updates of multiple entity properties including timestamped fields
+- **Entity Validation**: Response structure validation and concurrent update handling
+- **Error Handling**: Proper handling of non-existent entities, invalid requests, and permission issues
+
+📖 **Detailed Documentation**: See [ENTITIES_API_TESTS.md](./ENTITIES_API_TESTS.md) for comprehensive documentation of entities API test cases.
 
 ### Query and Search Tests
 - Basic entity queries with filters
@@ -173,14 +179,16 @@ The test suite covers the following Content Hub REST API endpoints:
 - `POST /api/oauth/token` - OAuth token acquisition
 
 ### Entity Management
-- `GET /api/entities` - List entities
+- `GET /api/entities/{id}` - Get entity by ID (with culture, permissions, groups, members, renditions)
+- `GET /api/entities/identifier/{identifier}` - Get entity by identifier
+- `PUT /api/entities/{id}` - Update entity by ID
+- `PUT /api/entities/identifier/{identifier}` - Update entity by identifier
 - `POST /api/entities` - Create entity
-- `GET /api/entities/{id}` - Get entity by ID
-- `PUT /api/entities/{id}` - Update entity
-- `DELETE /api/entities/{id}` - Delete entity
-- `GET /api/entities/query` - Query entities with filters
-- `POST /api/entities/query` - Advanced entity search
-- `GET /api/entities/search` - Full-text search
+- `DELETE /api/entities/{id}` - Delete entity by ID
+- `DELETE /api/entities/identifier/{identifier}` - Delete entity by identifier
+- `GET /api/entitydefinitions/{name}/entities` - List entities by definition
+- `GET /api/entities/{id}/renditions` - Get entity renditions
+- `POST /api/entities/{id}/renditions` - Get filtered entity renditions
 
 ### Upload API
 - `POST /api/upload/initiate` - Initiate file upload

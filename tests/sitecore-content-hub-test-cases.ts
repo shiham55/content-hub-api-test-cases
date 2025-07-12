@@ -11,6 +11,7 @@ interface AuthToken {
   access_token: string;
   token_type: string;
   expires_in: number;
+  scope: string;
 }
 
 /**
@@ -67,11 +68,12 @@ class ContentHubAPIClient {
 
     const response = await this.request.post(`${CONTENT_HUB_BASE_URL}/oauth/token`, {
       form: {
-        grant_type: 'password',
+        grant_type: 'client_credentials',
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         username: USERNAME,
-        password: PASSWORD
+        password: PASSWORD,
+        scope: 'api' // Adjust scope as needed
       },
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
@@ -188,11 +190,12 @@ test.describe('Sitecore Content Hub API Tests', () => {
     test('should fail authentication with invalid credentials', async ({ request }) => {
       const response = await request.post(`${CONTENT_HUB_BASE_URL}/oauth/token`, {
         form: {
-          grant_type: 'password',
+          grant_type: 'client_credentials',
           client_id: 'invalid-client',
           client_secret: 'invalid-secret',
           username: 'invalid-user',
-          password: 'invalid-password'
+          password: 'invalid-password',
+          scope: 'api'
         },
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
